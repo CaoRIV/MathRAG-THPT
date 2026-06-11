@@ -23,6 +23,29 @@ access to `/admin/*`.
 Uploads are size-checked, signature-checked, stored under generated names, parsed,
 persisted to SQLite, and added to retrieval immediately.
 
+## Normalized exams
+
+The normalized exam API is restricted to administrators. It is the persistence
+boundary used by the review UI and the automatic parser planned for the next phase.
+
+- `GET /admin/exams`: lists normalized exams and their processing status.
+- `POST /admin/exams`: creates exam metadata and optionally links one uploaded
+  `Document`.
+- `GET /admin/exams/{exam_id}`: returns metadata and ordered questions.
+- `PATCH /admin/exams/{exam_id}`: updates metadata or processing status.
+- `POST /admin/exams/{exam_id}/questions`: adds one normalized question.
+- `PATCH /admin/exams/{exam_id}/questions/{question_id}`: corrects extracted data
+  or marks a question as verified.
+
+An exam follows `uploaded -> parsing -> needs_review -> approved -> indexed`.
+Approval is rejected until the exam contains at least one question and every
+question has `extraction_status: "verified"`.
+
+Each question stores its number, type, Markdown/LaTeX prompt, structured options,
+answer, solution, difficulty, topics, formulas, source page, extraction confidence,
+and optional source chunk. Formula values preserve raw text, display LaTeX, and a
+normalized search representation.
+
 ## Chat
 
 - `POST /chat`: grounded non-streaming chat.

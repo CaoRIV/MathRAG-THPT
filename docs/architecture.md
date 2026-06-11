@@ -21,6 +21,21 @@ MathRAG THPT is a monorepo with independently runnable frontend and backend appl
 - Admin uploads are parsed into the same `Document`, `Chunk`, and `Formula` model used
   by retrieval and trigger an in-process index rebuild.
 
+## Normalized exam model
+
+Uploaded files remain the immutable source layer. An optional one-to-one `Exam`
+record adds structured exam metadata and review state. Each `ExamQuestion` is an
+independent learning and retrieval unit linked to its exam and, when available, its
+source `Chunk`.
+
+`ExamQuestion` stores structured answer options as JSON, Markdown/LaTeX content,
+answer and solution, topic labels, difficulty, formula triples, page attribution,
+and extraction quality fields. The `(exam_id, question_number)` pair is unique.
+
+Only verified questions can belong to an approved exam. This keeps automatic
+parsing separate from trusted content and provides a stable boundary for the future
+review interface, quiz engine, and question-level retrieval index.
+
 ## Replaceable boundaries
 
 - `EmbeddingProvider` separates local deterministic embeddings from Sentence Transformers or Ollama embeddings.
