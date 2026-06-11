@@ -1,0 +1,2 @@
+"""Local corpus ingestion pipeline."""
+

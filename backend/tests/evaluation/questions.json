@@ -1,0 +1,8 @@
+[
+  {"category": "theory", "query": "Khi nào hàm số đồng biến?", "expected_topic": "Hàm số"},
+  {"category": "formula", "query": "Công thức $P(A|B)$ là gì?", "expected_topic": "Xác suất"},
+  {"category": "similar_problem", "query": "Tìm bài tương tự về diện tích hình phẳng", "expected_topic": "Nguyên hàm - Tích phân"},
+  {"category": "exam_hint", "query": "Gợi ý cách đọc bảng biến thiên", "expected_topic": "Hàm số"},
+  {"category": "mixed_latex", "query": "Tính $\\int x^n dx$", "expected_topic": "Nguyên hàm - Tích phân"},
+  {"category": "insufficient", "query": "Chứng minh định lý đại số trừu tượng bậc cao", "expected_topic": null}
+]

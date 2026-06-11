@@ -1,0 +1,137 @@
+{
+  "documents": [
+    {
+      "id": "doc-ham-so",
+      "title": "Khảo sát hàm số bằng đạo hàm",
+      "topic": "Hàm số",
+      "content_type": "theory",
+      "grade": 12,
+      "source_url": "https://example.edu.vn/ham-so",
+      "chunks": [
+        {
+          "id": "chunk-ham-so-dao-ham",
+          "heading": "Tính đơn điệu",
+          "content": "Cho hàm số y=f(x) có đạo hàm trên khoảng K. Nếu f'(x)>0 với mọi x thuộc K thì hàm số đồng biến trên K. Nếu f'(x)<0 với mọi x thuộc K thì hàm số nghịch biến trên K. Khi khảo sát, cần tìm tập xác định, tính đạo hàm, xét dấu đạo hàm rồi lập bảng biến thiên.",
+          "content_type": "theory",
+          "page_number": 1,
+          "formulas": ["f'(x)>0", "f'(x)<0"]
+        },
+        {
+          "id": "chunk-ham-so-cuc-tri",
+          "heading": "Cực trị",
+          "content": "Nếu đạo hàm đổi dấu từ dương sang âm khi đi qua x0 thì x0 là điểm cực đại. Nếu đạo hàm đổi dấu từ âm sang dương thì x0 là điểm cực tiểu. Điều kiện f'(x0)=0 một mình chưa đủ để kết luận cực trị.",
+          "content_type": "formula",
+          "page_number": 2,
+          "formulas": ["f'(x_0)=0"]
+        }
+      ]
+    },
+    {
+      "id": "doc-mu-logarit",
+      "title": "Công thức mũ và logarit",
+      "topic": "Mũ và logarit",
+      "content_type": "formula",
+      "grade": 12,
+      "source_url": "https://example.edu.vn/mu-logarit",
+      "chunks": [
+        {
+          "id": "chunk-log-cong-thuc",
+          "heading": "Các công thức logarit",
+          "content": "Với a>0, a khác 1 và x,y>0: log_a(xy)=log_a x+log_a y; log_a(x/y)=log_a x-log_a y; log_a(x^n)=n log_a x. Công thức đổi cơ số: log_a x = ln x / ln a.",
+          "content_type": "formula",
+          "page_number": 1,
+          "formulas": ["\\log_a(xy)=\\log_a x+\\log_a y", "\\log_a x=\\frac{\\ln x}{\\ln a}"]
+        },
+        {
+          "id": "chunk-log-phuong-trinh",
+          "heading": "Phương trình logarit",
+          "content": "Khi giải phương trình logarit, trước hết đặt điều kiện để mọi biểu thức trong logarit dương. Sau đó sử dụng tính đơn điệu hoặc đưa về cùng cơ số. Cuối cùng phải đối chiếu nghiệm với điều kiện xác định.",
+          "content_type": "example",
+          "page_number": 2,
+          "formulas": ["\\log_a f(x)=\\log_a g(x)"]
+        }
+      ]
+    },
+    {
+      "id": "doc-tich-phan",
+      "title": "Nguyên hàm, tích phân và ứng dụng",
+      "topic": "Nguyên hàm - Tích phân",
+      "content_type": "theory",
+      "grade": 12,
+      "source_url": "https://example.edu.vn/tich-phan",
+      "chunks": [
+        {
+          "id": "chunk-nguyen-ham",
+          "heading": "Bảng nguyên hàm",
+          "content": "Với n khác -1, nguyên hàm của x^n là x^(n+1)/(n+1)+C. Ta có nguyên hàm của e^x là e^x+C và nguyên hàm của 1/x là ln|x|+C trên từng khoảng xác định.",
+          "content_type": "formula",
+          "page_number": 1,
+          "formulas": ["\\int x^n dx=\\frac{x^{n+1}}{n+1}+C", "\\int e^x dx=e^x+C", "\\int \\frac{1}{x}dx=\\ln|x|+C"]
+        },
+        {
+          "id": "chunk-tich-phan-dien-tich",
+          "heading": "Diện tích hình phẳng",
+          "content": "Diện tích hình phẳng giới hạn bởi hai đồ thị y=f(x), y=g(x) và hai đường thẳng x=a, x=b được tính bằng tích phân từ a đến b của giá trị tuyệt đối f(x)-g(x). Cần xác định các giao điểm để chia khoảng nếu hiệu đổi dấu.",
+          "content_type": "example",
+          "page_number": 3,
+          "formulas": ["S=\\int_a^b|f(x)-g(x)|dx"]
+        }
+      ]
+    },
+    {
+      "id": "doc-oxyz",
+      "title": "Phương pháp tọa độ trong không gian Oxyz",
+      "topic": "Hình học không gian",
+      "content_type": "theory",
+      "grade": 12,
+      "source_url": "https://example.edu.vn/oxyz",
+      "chunks": [
+        {
+          "id": "chunk-oxyz-mat-phang",
+          "heading": "Mặt phẳng",
+          "content": "Mặt phẳng có vectơ pháp tuyến n=(A,B,C) có phương trình Ax+By+Cz+D=0. Khoảng cách từ điểm M(x0,y0,z0) đến mặt phẳng bằng giá trị tuyệt đối Ax0+By0+Cz0+D chia cho căn bậc hai A^2+B^2+C^2.",
+          "content_type": "formula",
+          "page_number": 2,
+          "formulas": ["Ax+By+Cz+D=0", "d(M,(P))=\\frac{|Ax_0+By_0+Cz_0+D|}{\\sqrt{A^2+B^2+C^2}}"]
+        }
+      ]
+    },
+    {
+      "id": "doc-xac-suat",
+      "title": "Xác suất có điều kiện",
+      "topic": "Xác suất",
+      "content_type": "theory",
+      "grade": 12,
+      "source_url": "https://example.edu.vn/xac-suat",
+      "chunks": [
+        {
+          "id": "chunk-xac-suat-dieu-kien",
+          "heading": "Công thức xác suất có điều kiện",
+          "content": "Nếu P(B)>0 thì xác suất của A với điều kiện B là P(A|B)=P(A giao B)/P(B). Công thức nhân suy ra P(A giao B)=P(B)P(A|B). Khi dùng sơ đồ cây, xác suất của một nhánh bằng tích các xác suất trên nhánh đó.",
+          "content_type": "formula",
+          "page_number": 1,
+          "formulas": ["P(A|B)=\\frac{P(A\\cap B)}{P(B)}", "P(A\\cap B)=P(B)P(A|B)"]
+        }
+      ]
+    },
+    {
+      "id": "doc-thpt-mock",
+      "title": "Đề luyện thi tốt nghiệp THPT - Chủ đề tổng hợp",
+      "topic": "Hàm số",
+      "content_type": "exam",
+      "grade": 12,
+      "source_url": "https://example.edu.vn/de-thi-thpt",
+      "chunks": [
+        {
+          "id": "chunk-mock-cau-1",
+          "heading": "Câu 1 - Tính đơn điệu",
+          "content": "Cho hàm số có bảng biến thiên. Hãy xác định khoảng đồng biến. Gợi ý: đọc dấu của đạo hàm hoặc chiều đi lên của mũi tên trên bảng biến thiên trước khi chọn đáp án.",
+          "content_type": "exam",
+          "page_number": 1,
+          "formulas": ["f'(x)>0"]
+        }
+      ]
+    }
+  ]
+}
+

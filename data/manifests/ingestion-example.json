@@ -1,0 +1,14 @@
+{
+  "sources": [
+    {
+      "id": "fixture-nguyen-ham",
+      "path": "../fixtures/nguyen-ham.html",
+      "title": "Nguyên hàm và tích phân cơ bản",
+      "topic": "Nguyên hàm - Tích phân",
+      "content_type": "theory",
+      "grade": 12,
+      "source_url": "https://example.edu.vn/nguyen-ham"
+    }
+  ]
+}
+

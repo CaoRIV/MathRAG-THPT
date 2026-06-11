@@ -1,0 +1,41 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      MATHRAG_DATABASE_URL: sqlite:////data/mathrag.db
+      MATHRAG_MANIFEST_PATH: /corpus/sample-corpus.json
+      MATHRAG_UPLOAD_DIR: /uploads
+      MATHRAG_OLLAMA_BASE_URL: http://ollama:11434
+      MATHRAG_OLLAMA_ENABLED: "false"
+      MATHRAG_JWT_SECRET_KEY: ${MATHRAG_JWT_SECRET_KEY:-development-only-change-me}
+      MATHRAG_ADMIN_EMAIL: ${MATHRAG_ADMIN_EMAIL:-admin@mathrag.vn}
+      MATHRAG_ADMIN_PASSWORD: ${MATHRAG_ADMIN_PASSWORD:-ChangeMe123!}
+    volumes:
+      - mathrag-db:/data
+      - ./data/manifests:/corpus:ro
+      - mathrag-uploads:/uploads
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: http://localhost:8000/api/v1
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["llm"]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+
+volumes:
+  mathrag-db:
+  ollama-data:
+  mathrag-uploads:

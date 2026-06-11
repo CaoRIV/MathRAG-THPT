@@ -1,0 +1,19 @@
+{
+  "name": "mathrag-thpt",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev:backend": "cd backend && uv run uvicorn app.main:app --reload --port 8000",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "migrate:backend": "cd backend && uv --cache-dir ../.uv-cache run python scripts/migrate.py",
+    "sync:admin": "cd backend && uv --cache-dir ../.uv-cache run python scripts/sync_admin.py",
+    "test:backend": "cd backend && uv run pytest",
+    "test:frontend": "npm --prefix frontend test",
+    "lint:backend": "cd backend && uv run ruff check .",
+    "lint:frontend": "npm --prefix frontend run lint",
+    "build:frontend": "npm --prefix frontend run build",
+    "ingest:fixture": "cd backend && uv run mathrag-ingest ingest --manifest ../data/manifests/ingestion-example.json --output ../data/processed/corpus.json",
+    "index:fixture": "cd backend && uv run mathrag-ingest build-index --corpus ../data/processed/corpus.json --output ../data/manifests/local-corpus.json",
+    "generate:api": "npm --prefix frontend run generate:api"
+  }
+}

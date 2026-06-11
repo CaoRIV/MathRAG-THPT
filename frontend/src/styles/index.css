@@ -1,0 +1,103 @@
+@import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@500;600;700&family=Noto+Sans:wght@400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color: #1e1b4b;
+  background: #faf9ff;
+  font-family: "Noto Sans", "Be Vietnam Pro", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 85% 4%, rgba(6, 182, 212, 0.08), transparent 28rem),
+    radial-gradient(circle at 8% 86%, rgba(124, 58, 237, 0.07), transparent 30rem),
+    #faf9ff;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.math-content {
+  color: #302d55;
+  font-size: 0.9375rem;
+  line-height: 1.85;
+}
+
+.math-content h1,
+.math-content h2,
+.math-content h3 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.65rem;
+  color: #1e1b4b;
+  font-family: "Be Vietnam Pro", "Noto Sans", sans-serif;
+  font-weight: 600;
+}
+
+.math-content h2 {
+  font-size: 1.05rem;
+}
+
+.math-content p {
+  margin: 0.75rem 0;
+}
+
+.math-content ol,
+.math-content ul {
+  margin: 0.75rem 0;
+  padding-left: 1.35rem;
+}
+
+.math-content ol {
+  list-style: decimal;
+}
+
+.math-content ul {
+  list-style: disc;
+}
+
+.math-content code {
+  border-radius: 0.35rem;
+  background: #f1f0f7;
+  padding: 0.15rem 0.35rem;
+  font-size: 0.86em;
+}
+
+.math-content .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 1px solid #e9e7f0;
+  border-radius: 0.9rem;
+  background: #fbfaff;
+  padding: 1rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
