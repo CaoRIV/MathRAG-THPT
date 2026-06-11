@@ -3,7 +3,7 @@ from typing import Protocol
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
-from app.db.models import Chunk, Document, Quiz, User
+from app.db.models import Chunk, Document, Exam, ExamQuestion, Quiz, User
 
 
 class DocumentRepository(Protocol):
@@ -63,3 +63,35 @@ class SqlAlchemyUserRepository:
         self.session.commit()
         self.session.refresh(user)
         return user
+
+
+class SqlAlchemyExamRepository:
+    def __init__(self, session: Session):
+        self.session = session
+
+    def list(self) -> list[Exam]:
+        statement = (
+            select(Exam)
+            .options(selectinload(Exam.questions))
+            .order_by(Exam.created_at.desc())
+        )
+        return list(self.session.scalars(statement))
+
+    def get(self, exam_id: str) -> Exam | None:
+        statement = (
+            select(Exam)
+            .where(Exam.id == exam_id)
+            .options(selectinload(Exam.questions))
+        )
+        return self.session.scalar(statement)
+
+    def get_by_document(self, document_id: str) -> Exam | None:
+        return self.session.scalar(select(Exam).where(Exam.document_id == document_id))
+
+    def get_question(self, exam_id: str, question_id: str) -> ExamQuestion | None:
+        return self.session.scalar(
+            select(ExamQuestion).where(
+                ExamQuestion.id == question_id,
+                ExamQuestion.exam_id == exam_id,
+            )
+        )

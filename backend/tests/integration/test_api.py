@@ -6,15 +6,20 @@ from docx import Document as DocxDocument
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from app.db.models import Document, User
+from app.core.config import get_settings
+from app.db.models import Document, Exam, User
 from app.db.session import SessionLocal
 from app.main import app
 
 
 def auth_headers(client: TestClient) -> dict[str, str]:
+    settings = get_settings()
     response = client.post(
         "/api/v1/auth/login",
-        json={"email": "admin@mathrag.vn", "password": "ChangeMe123!"},
+        json={
+            "email": settings.admin_email,
+            "password": settings.admin_password,
+        },
     )
     assert response.status_code == 200
     return {"Authorization": f"Bearer {response.json()['access_token']}"}
@@ -161,3 +166,103 @@ def test_admin_can_upload_docx_and_search_it() -> None:
                     session.delete(stored_document)
                     session.commit()
                     source_path.unlink(missing_ok=True)
+
+
+def test_admin_can_normalize_and_review_exam_questions() -> None:
+    exam_id = None
+    with TestClient(app) as client:
+        headers = auth_headers(client)
+        created = client.post(
+            "/api/v1/admin/exams",
+            headers=headers,
+            json={
+                "title": f"De thi thu THPT {uuid4()}",
+                "year": 2026,
+                "school": "Truong THPT Tich hop",
+                "province": "Ha Noi",
+                "exam_type": "mock",
+                "duration_minutes": 90,
+                "expected_question_count": 50,
+                "grade": 12,
+            },
+        )
+        assert created.status_code == 201, created.text
+        exam_id = created.json()["id"]
+        assert created.json()["question_count"] == 0
+        assert created.json()["processing_status"] == "uploaded"
+
+        question_payload = {
+            "question_number": 1,
+            "question_type": "multiple_choice",
+            "prompt_markdown": "Tinh $\\int_0^1 x^2\\,dx$.",
+            "options": [
+                {"key": "A", "content_markdown": "$1/3$"},
+                {"key": "B", "content_markdown": "$1/2$"},
+                {"key": "C", "content_markdown": "$1$"},
+                {"key": "D", "content_markdown": "$2$"},
+            ],
+            "correct_answer": "A",
+            "solution_markdown": "$\\int_0^1 x^2\\,dx=1/3$.",
+            "difficulty": "easy",
+            "topics": ["Nguyen ham - Tich phan"],
+            "formulas": [
+                {
+                    "raw_text": "integral from 0 to 1 of x squared",
+                    "latex": "\\int_0^1 x^2\\,dx",
+                    "normalized": "\\int_{0}^{1}x^{2}dx",
+                }
+            ],
+            "page_number": 1,
+            "extraction_status": "needs_review",
+            "extraction_confidence": 0.96,
+        }
+        question = client.post(
+            f"/api/v1/admin/exams/{exam_id}/questions",
+            headers=headers,
+            json=question_payload,
+        )
+        assert question.status_code == 201, question.text
+        question_id = question.json()["id"]
+        assert question.json()["options"][0]["key"] == "A"
+        assert question.json()["formulas"][0]["normalized"]
+
+        duplicate = client.post(
+            f"/api/v1/admin/exams/{exam_id}/questions",
+            headers=headers,
+            json=question_payload,
+        )
+        assert duplicate.status_code == 422
+
+        premature_approval = client.patch(
+            f"/api/v1/admin/exams/{exam_id}",
+            headers=headers,
+            json={"processing_status": "approved"},
+        )
+        assert premature_approval.status_code == 422
+
+        verified = client.patch(
+            f"/api/v1/admin/exams/{exam_id}/questions/{question_id}",
+            headers=headers,
+            json={"extraction_status": "verified"},
+        )
+        assert verified.status_code == 200, verified.text
+
+        approved = client.patch(
+            f"/api/v1/admin/exams/{exam_id}",
+            headers=headers,
+            json={"processing_status": "approved"},
+        )
+        assert approved.status_code == 200, approved.text
+        assert approved.json()["question_count"] == 1
+        assert approved.json()["questions"][0]["question_number"] == 1
+
+        listing = client.get("/api/v1/admin/exams", headers=headers)
+        assert listing.status_code == 200
+        assert any(item["id"] == exam_id for item in listing.json()["items"])
+
+    if exam_id:
+        with SessionLocal() as session:
+            exam = session.get(Exam, exam_id)
+            if exam:
+                session.delete(exam)
+                session.commit()
