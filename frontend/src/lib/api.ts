@@ -5,6 +5,7 @@ import type {
   ChatRequest,
   ChatResponse,
   DocumentDetail,
+  ExamParseReport,
   QuizResponse,
   ReadinessResponse,
   SearchFilters,
@@ -109,5 +110,9 @@ export const api = {
     request<AdminDocument>("/admin/documents/upload", {
       method: "POST",
       body: formData,
+    }),
+  parseAdminExamDocument: (documentId: string) =>
+    request<ExamParseReport>(`/admin/documents/${documentId}/parse-exam`, {
+      method: "POST",
     }),
 };

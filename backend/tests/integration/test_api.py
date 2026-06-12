@@ -266,3 +266,105 @@ def test_admin_can_normalize_and_review_exam_questions() -> None:
             if exam:
                 session.delete(exam)
                 session.commit()
+
+
+def test_exam_upload_auto_parses_and_reparse_preserves_verified_questions() -> None:
+    title = f"De thi tu dong {uuid4()}"
+    source = DocxDocument()
+    source.add_heading("De thi thu tot nghiep THPT", level=1)
+    source.add_paragraph(r"Câu 1. Tính $\int_0^1 x^2\,dx$.")
+    source.add_paragraph(
+        r"A. $\frac{1}{3}$ B. $\frac{1}{2}$ C. $1$ D. $2$"
+    )
+    source.add_paragraph("Câu 2. Hàm số nào sau đây đồng biến trên R?")
+    source.add_paragraph("A. y=x^3 B. y=-x C. y=-x^2 D. y=1/x")
+    source.add_heading("ĐÁP ÁN", level=1)
+    source.add_paragraph("1 A 2 A")
+    source.add_heading("LỜI GIẢI", level=1)
+    source.add_paragraph(r"Câu 1. Ta có $\int_0^1 x^2\,dx=\frac{1}{3}$.")
+    source.add_paragraph("Câu 2. Hàm số y=x^3 có đạo hàm không âm.")
+    content = BytesIO()
+    source.save(content)
+
+    document_id = None
+    exam_id = None
+    try:
+        with TestClient(app) as client:
+            headers = auth_headers(client)
+            upload = client.post(
+                "/api/v1/admin/documents/upload",
+                headers=headers,
+                files={
+                    "file": (
+                        "de-thi.docx",
+                        content.getvalue(),
+                        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    )
+                },
+                data={
+                    "title": title,
+                    "topic": "Đề thi THPT",
+                    "grade": "12",
+                    "content_type": "exam",
+                },
+            )
+            assert upload.status_code == 201, upload.text
+            payload = upload.json()
+            document_id = payload["id"]
+            exam_id = payload["exam_id"]
+            assert payload["exam_processing_status"] == "needs_review", payload
+            assert payload["exam_parse_report"]["detected_questions"] == 2
+            assert payload["exam_parse_report"]["answers_matched"] == 2
+
+            exam = client.get(
+                f"/api/v1/admin/exams/{exam_id}",
+                headers=headers,
+            )
+            assert exam.status_code == 200
+            assert exam.json()["question_count"] == 2
+            first_question = exam.json()["questions"][0]
+            assert first_question["page_number"] is None
+            assert first_question["correct_answer"] == "A"
+
+            verified = client.patch(
+                f"/api/v1/admin/exams/{exam_id}/questions/{first_question['id']}",
+                headers=headers,
+                json={
+                    "extraction_status": "verified",
+                    "prompt_markdown": "Nội dung đã được Admin kiểm duyệt.",
+                },
+            )
+            assert verified.status_code == 200
+
+            reparse = client.post(
+                f"/api/v1/admin/documents/{document_id}/parse-exam",
+                headers=headers,
+            )
+            assert reparse.status_code == 200, reparse.text
+            assert reparse.json()["preserved_verified_questions"] == 1
+            assert reparse.json()["updated_questions"] == 1
+
+            after = client.get(
+                f"/api/v1/admin/exams/{exam_id}",
+                headers=headers,
+            )
+            assert after.status_code == 200
+            assert after.json()["questions"][0]["prompt_markdown"] == (
+                "Nội dung đã được Admin kiểm duyệt."
+            )
+    finally:
+        with SessionLocal() as session:
+            if exam_id:
+                exam = session.get(Exam, exam_id)
+                if exam:
+                    session.delete(exam)
+                    session.flush()
+            if document_id:
+                document = session.get(Document, document_id)
+                if document:
+                    source_path = Path(document.source_path or "")
+                    session.delete(document)
+                    session.commit()
+                    source_path.unlink(missing_ok=True)
+                else:
+                    session.commit()

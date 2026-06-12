@@ -9,7 +9,9 @@ from app.core.config import get_settings
 from app.db.models import User
 from app.db.session import get_db
 from app.schemas.admin import AdminDocumentList, AdminDocumentResponse
+from app.schemas.exams import ExamParseReport
 from app.services.documents.admin import AdminDocumentService
+from app.services.exams import ExamParsingService
 
 router = APIRouter()
 
@@ -56,6 +58,24 @@ async def upload_document(
             description=description,
             current_user=current_user,
         )
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(error),
+        ) from error
+
+
+@router.post(
+    "/documents/{document_id}/parse-exam",
+    response_model=ExamParseReport,
+)
+def parse_exam_document(
+    document_id: str,
+    current_user: User = Depends(require_admin),
+    session: Session = Depends(get_db),
+) -> ExamParseReport:
+    try:
+        return ExamParsingService(session).parse_document(document_id, current_user)
     except ValueError as error:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

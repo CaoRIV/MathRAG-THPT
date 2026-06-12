@@ -142,6 +142,9 @@ export interface AdminDocument {
   topic: string;
   content_type: string;
   chunk_count: number;
+  exam_id?: string | null;
+  exam_processing_status?: ExamProcessingStatus | null;
+  exam_parse_report?: ExamParseReport | null;
   uploaded_by: string;
   created_at: string;
 }
@@ -149,4 +152,28 @@ export interface AdminDocument {
 export interface AdminDocumentList {
   items: AdminDocument[];
   total: number;
+}
+
+export type ExamProcessingStatus =
+  | "uploaded"
+  | "parsing"
+  | "needs_review"
+  | "approved"
+  | "indexed"
+  | "failed";
+
+export interface ExamParseReport {
+  exam_id: string;
+  document_id: string;
+  processing_status: ExamProcessingStatus;
+  detected_questions: number;
+  answers_matched: number;
+  solutions_matched: number;
+  formulas_detected: number;
+  created_questions: number;
+  updated_questions: number;
+  preserved_verified_questions: number;
+  removed_stale_questions: number;
+  questions_needing_review: number;
+  warnings: string[];
 }

@@ -36,6 +36,23 @@ Only verified questions can belong to an approved exam. This keeps automatic
 parsing separate from trusted content and provides a stable boundary for the future
 review interface, quiz engine, and question-level retrieval index.
 
+## Exam parsing pipeline
+
+For an uploaded exam, the parser reads the original PDF/DOCX and preserves page
+attribution when the source format provides it. It then:
+
+1. separates the question, answer-key, and detailed-solution regions;
+2. recognizes `Câu n`/`Bài n` boundaries;
+3. extracts multiple-choice or true/false options;
+4. matches answer-key and numbered solution entries;
+5. extracts LaTeX and common Unicode math expressions;
+6. assigns deterministic topic hints, confidence, and review warnings;
+7. upserts normalized `ExamQuestion` rows.
+
+Parsing transitions an exam through `parsing` to `needs_review`, or to `failed` when
+no reliable question structure is detected. Reparse preserves every `verified`
+question so automatic extraction cannot overwrite reviewed educational content.
+
 ## Replaceable boundaries
 
 - `EmbeddingProvider` separates local deterministic embeddings from Sentence Transformers or Ollama embeddings.
