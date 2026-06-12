@@ -12,6 +12,8 @@ from app.ingestion.chunkers import chunk_sections
 from app.ingestion.normalizers import normalize_text
 from app.ingestion.parsers import parse_document
 from app.schemas.admin import AdminDocumentList, AdminDocumentResponse
+from app.schemas.exams import ExamParseReport
+from app.services.exams import ExamParsingService
 from app.services.retrieval.formula import extract_formulas, formula_tokens, normalize_formula
 from app.services.retrieval.types import RetrievalDocument
 
@@ -136,7 +138,29 @@ class AdminDocumentService:
             self.session.commit()
             committed = True
             await self.container.add_retrieval_documents(retrieval_documents)
-            return self._to_response(document, len(parsed_chunks), current_user.email)
+            parse_report = None
+            if content_type == "exam":
+                try:
+                    parse_report = ExamParsingService(self.session).parse_document(
+                        document.id,
+                        current_user,
+                    )
+                except ValueError:
+                    # Keep the source available for correction and manual reparse.
+                    pass
+            self.session.expire(document, ["exam"])
+            document = self.session.scalar(
+                select(Document)
+                .where(Document.id == document.id)
+                .options(selectinload(Document.exam))
+                .execution_options(populate_existing=True)
+            ) or document
+            return self._to_response(
+                document,
+                len(parsed_chunks),
+                current_user.email,
+                parse_report,
+            )
         except Exception:
             if not committed:
                 self.session.rollback()
@@ -147,7 +171,7 @@ class AdminDocumentService:
         statement = (
             select(Document)
             .where(Document.metadata_json["uploaded"].as_boolean() == True)  # noqa: E712
-            .options(selectinload(Document.chunks))
+            .options(selectinload(Document.chunks), selectinload(Document.exam))
             .order_by(Document.created_at.desc())
         )
         documents = list(self.session.scalars(statement))
@@ -175,6 +199,7 @@ class AdminDocumentService:
         document: Document,
         chunk_count: int,
         uploaded_by: str,
+        parse_report: ExamParseReport | None = None,
     ) -> AdminDocumentResponse:
         return AdminDocumentResponse(
             id=document.id,
@@ -184,6 +209,11 @@ class AdminDocumentService:
             topic=document.topic,
             content_type=document.content_type,
             chunk_count=chunk_count,
+            exam_id=document.exam.id if document.exam else None,
+            exam_processing_status=(
+                document.exam.processing_status if document.exam else None
+            ),
+            exam_parse_report=parse_report,
             uploaded_by=uploaded_by,
             created_at=document.created_at,
         )

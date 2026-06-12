@@ -19,9 +19,19 @@ access to `/admin/*`.
 - `GET /admin/documents`: lists files uploaded by administrators.
 - `POST /admin/documents/upload`: accepts multipart PDF or DOCX files plus title,
   grade, topic, content type, and optional description.
+- `POST /admin/documents/{document_id}/parse-exam`: parses or reparses an existing
+  exam document into normalized questions.
 
 Uploads are size-checked, signature-checked, stored under generated names, parsed,
 persisted to SQLite, and added to retrieval immediately.
+
+Uploads with `content_type: "exam"` also run the exam parser automatically. A parser
+failure does not discard the uploaded source; the linked exam is marked `failed` and
+can be reparsed after the source or parser rules are corrected.
+
+The parse report includes detected questions, matched answers and solutions, formula
+count, created/updated questions, preserved verified questions, removed stale
+questions, review count, and warnings.
 
 ## Normalized exams
 
@@ -45,6 +55,10 @@ Each question stores its number, type, Markdown/LaTeX prompt, structured options
 answer, solution, difficulty, topics, formulas, source page, extraction confidence,
 and optional source chunk. Formula values preserve raw text, display LaTeX, and a
 normalized search representation.
+
+Reparsing is idempotent by `(exam_id, question_number)`. Questions already marked
+`verified` are never overwritten or deleted. Non-verified parser output is updated,
+and stale non-verified questions are removed.
 
 ## Chat
 

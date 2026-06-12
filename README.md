@@ -112,6 +112,11 @@ Administrators can also upload approved PDF and DOCX files directly from the web
 interface. Uploaded files are stored in `data/uploads`, written to SQLite, and added
 to the active hybrid retrieval index immediately.
 
+Files uploaded with content type **Đề thi** are also parsed into normalized
+questions, options, answer keys, solutions, formulas, and page references. Existing
+exam files can be processed from the Admin table with **Phân tích đề** or
+**Phân tích lại**. Questions already verified by an Admin are preserved on reparse.
+
 ## Verify
 
 ```powershell

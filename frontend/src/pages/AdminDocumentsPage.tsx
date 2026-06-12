@@ -1,9 +1,11 @@
 import {
   CheckCircle2,
+  FileSearch,
   FileText,
   FileUp,
   FolderOpen,
   ShieldCheck,
+  TriangleAlert,
   UploadCloud,
   X,
 } from "lucide-react";
@@ -13,6 +15,10 @@ import { api } from "../lib/api";
 import { Badge } from "../components/ui/Badge";
 import { LoadingDots } from "../components/ui/LoadingDots";
 import { cn, contentLabels } from "../lib/utils";
+import type {
+  ExamParseReport,
+  ExamProcessingStatus,
+} from "../types/generated/api";
 
 const topics = [
   "Hàm số",
@@ -22,6 +28,27 @@ const topics = [
   "Xác suất",
   "Đề thi THPT",
 ];
+
+const examStatusLabels: Record<ExamProcessingStatus, string> = {
+  uploaded: "Chưa phân tích",
+  parsing: "Đang phân tích",
+  needs_review: "Cần kiểm duyệt",
+  approved: "Đã duyệt",
+  indexed: "Đã lập chỉ mục",
+  failed: "Phân tích lỗi",
+};
+
+const examStatusTones: Record<
+  ExamProcessingStatus,
+  "violet" | "cyan" | "amber" | "emerald" | "rose" | "slate"
+> = {
+  uploaded: "slate",
+  parsing: "cyan",
+  needs_review: "amber",
+  approved: "emerald",
+  indexed: "emerald",
+  failed: "rose",
+};
 
 export function AdminDocumentsPage() {
   const queryClient = useQueryClient();
@@ -33,17 +60,26 @@ export function AdminDocumentsPage() {
   const [grade, setGrade] = useState("12");
   const [contentType, setContentType] = useState("theory");
   const [description, setDescription] = useState("");
+  const [parseReport, setParseReport] = useState<ExamParseReport | null>(null);
   const documents = useQuery({
     queryKey: ["admin-documents"],
     queryFn: api.adminDocuments,
   });
   const upload = useMutation({
     mutationFn: api.uploadAdminDocument,
-    onSuccess: () => {
+    onSuccess: (document) => {
       queryClient.invalidateQueries({ queryKey: ["admin-documents"] });
+      setParseReport(document.exam_parse_report ?? null);
       setFile(null);
       setTitle("");
       setDescription("");
+    },
+  });
+  const parseExam = useMutation({
+    mutationFn: api.parseAdminExamDocument,
+    onSuccess: (report) => {
+      setParseReport(report);
+      queryClient.invalidateQueries({ queryKey: ["admin-documents"] });
     },
   });
 
@@ -207,14 +243,46 @@ export function AdminDocumentsPage() {
           </div>
           {documents.isLoading && <LoadingDots />}
         </div>
+        {parseReport && (
+          <div
+            className="mt-5 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"
+            role="status"
+            aria-live="polite"
+          >
+            <div className="flex items-start gap-3">
+              <FileSearch className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              <div>
+                <p className="font-semibold">
+                  Đã phát hiện {parseReport.detected_questions} câu hỏi
+                </p>
+                <p className="mt-1 leading-6">
+                  Ghép được {parseReport.answers_matched} đáp án,{" "}
+                  {parseReport.solutions_matched} lời giải và{" "}
+                  {parseReport.formulas_detected} công thức. Còn{" "}
+                  {parseReport.questions_needing_review} câu cần kiểm duyệt.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+        {parseExam.isError && (
+          <div
+            className="mt-5 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-900"
+            role="alert"
+          >
+            <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <p>{parseExam.error.message}</p>
+          </div>
+        )}
         <div className="mt-5 overflow-x-auto">
-          <table className="w-full min-w-[760px] border-separate border-spacing-0 text-left text-sm">
+          <table className="w-full min-w-[900px] border-separate border-spacing-0 text-left text-sm">
             <thead>
               <tr className="text-xs uppercase tracking-wider text-muted">
                 <th className="border-b border-slate-200 px-3 py-3 font-semibold">Tài liệu</th>
                 <th className="border-b border-slate-200 px-3 py-3 font-semibold">Chủ đề</th>
                 <th className="border-b border-slate-200 px-3 py-3 font-semibold">Loại</th>
                 <th className="border-b border-slate-200 px-3 py-3 font-semibold">Chunks</th>
+                <th className="border-b border-slate-200 px-3 py-3 font-semibold">Xử lý đề</th>
                 <th className="border-b border-slate-200 px-3 py-3 font-semibold">Ngày tải</th>
               </tr>
             </thead>
@@ -228,6 +296,37 @@ export function AdminDocumentsPage() {
                   <td className="border-b border-slate-100 px-3 py-4 text-muted">Toán {document.grade} · {document.topic}</td>
                   <td className="border-b border-slate-100 px-3 py-4"><Badge tone="slate">{contentLabels[document.content_type] ?? document.content_type}</Badge></td>
                   <td className="border-b border-slate-100 px-3 py-4 text-muted">{document.chunk_count}</td>
+                  <td className="border-b border-slate-100 px-3 py-4">
+                    {document.content_type === "exam" ? (
+                      <div className="flex min-w-40 flex-col items-start gap-2">
+                        {document.exam_processing_status && (
+                          <Badge tone={examStatusTones[document.exam_processing_status]}>
+                            {examStatusLabels[document.exam_processing_status]}
+                          </Badge>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setParseReport(null);
+                            parseExam.mutate(document.id);
+                          }}
+                          disabled={
+                            parseExam.isPending && parseExam.variables === document.id
+                          }
+                          className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-ink transition-colors hover:border-primary-200 hover:bg-primary-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary-100 disabled:cursor-wait disabled:text-muted"
+                        >
+                          <FileSearch className="h-3.5 w-3.5" aria-hidden="true" />
+                          {parseExam.isPending && parseExam.variables === document.id
+                            ? "Đang phân tích..."
+                            : document.exam_id
+                              ? "Phân tích lại"
+                              : "Phân tích đề"}
+                        </button>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted">Không áp dụng</span>
+                    )}
+                  </td>
                   <td className="border-b border-slate-100 px-3 py-4 text-muted">{new Intl.DateTimeFormat("vi-VN").format(new Date(document.created_at))}</td>
                 </tr>
               ))}

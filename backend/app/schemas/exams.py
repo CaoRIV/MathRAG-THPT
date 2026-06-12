@@ -16,6 +16,7 @@ class ExamProcessingStatus(StrEnum):
     NEEDS_REVIEW = "needs_review"
     APPROVED = "approved"
     INDEXED = "indexed"
+    FAILED = "failed"
 
 
 class ExamQuestionType(StrEnum):
@@ -176,3 +177,19 @@ class ExamDetail(ExamSummary):
 class ExamList(BaseModel):
     items: list[ExamSummary]
     total: int
+
+
+class ExamParseReport(BaseModel):
+    exam_id: str
+    document_id: str
+    processing_status: ExamProcessingStatus
+    detected_questions: int
+    answers_matched: int
+    solutions_matched: int
+    formulas_detected: int
+    created_questions: int
+    updated_questions: int
+    preserved_verified_questions: int
+    removed_stale_questions: int
+    questions_needing_review: int
+    warnings: list[str] = Field(default_factory=list)
