@@ -316,6 +316,16 @@ def test_exam_upload_auto_parses_and_reparse_preserves_verified_questions() -> N
             assert payload["exam_parse_report"]["detected_questions"] == 2
             assert payload["exam_parse_report"]["answers_matched"] == 2
 
+            source_response = client.get(
+                f"/api/v1/admin/exams/{exam_id}/source",
+                headers=headers,
+            )
+            assert source_response.status_code == 200
+            assert source_response.headers["content-type"].startswith(
+                "application/vnd.openxmlformats-officedocument"
+            )
+            assert source_response.content
+
             exam = client.get(
                 f"/api/v1/admin/exams/{exam_id}",
                 headers=headers,
@@ -368,3 +378,98 @@ def test_exam_upload_auto_parses_and_reparse_preserves_verified_questions() -> N
                     source_path.unlink(missing_ok=True)
                 else:
                     session.commit()
+
+
+def test_bulk_review_skips_incomplete_questions_and_approval_requires_verification() -> None:
+    exam_id = None
+    with TestClient(app) as client:
+        headers = auth_headers(client)
+        created = client.post(
+            "/api/v1/admin/exams",
+            headers=headers,
+            json={"title": f"Review workflow {uuid4()}", "grade": 12},
+        )
+        assert created.status_code == 201
+        exam_id = created.json()["id"]
+
+        complete = client.post(
+            f"/api/v1/admin/exams/{exam_id}/questions",
+            headers=headers,
+            json={
+                "question_number": 1,
+                "question_type": "multiple_choice",
+                "prompt_markdown": "Tính $1+1$.",
+                "options": [
+                    {"key": "A", "content_markdown": "$2$"},
+                    {"key": "B", "content_markdown": "$3$"},
+                ],
+                "correct_answer": "A",
+                "solution_markdown": "$1+1=2$.",
+            },
+        )
+        assert complete.status_code == 201
+
+        incomplete = client.post(
+            f"/api/v1/admin/exams/{exam_id}/questions",
+            headers=headers,
+            json={
+                "question_number": 2,
+                "question_type": "short_answer",
+                "prompt_markdown": "Tìm giá trị của $x$.",
+            },
+        )
+        assert incomplete.status_code == 201
+        incomplete_id = incomplete.json()["id"]
+
+        bulk = client.post(
+            f"/api/v1/admin/exams/{exam_id}/verify-ready",
+            headers=headers,
+        )
+        assert bulk.status_code == 200, bulk.text
+        assert bulk.json()["verified_count"] == 1
+        assert bulk.json()["skipped_count"] == 1
+        assert bulk.json()["issues"][0]["question_number"] == 2
+
+        approval = client.post(
+            f"/api/v1/admin/exams/{exam_id}/approve",
+            headers=headers,
+        )
+        assert approval.status_code == 422
+
+        fixed = client.patch(
+            f"/api/v1/admin/exams/{exam_id}/questions/{incomplete_id}",
+            headers=headers,
+            json={
+                "correct_answer": "2",
+                "solution_markdown": "Suy ra $x=2$.",
+                "extraction_status": "verified",
+            },
+        )
+        assert fixed.status_code == 200, fixed.text
+
+        approved = client.post(
+            f"/api/v1/admin/exams/{exam_id}/approve",
+            headers=headers,
+        )
+        assert approved.status_code == 200, approved.text
+        assert approved.json()["processing_status"] == "approved"
+
+        demoted = client.patch(
+            f"/api/v1/admin/exams/{exam_id}/questions/{incomplete_id}",
+            headers=headers,
+            json={"prompt_markdown": "Nội dung đã thay đổi."},
+        )
+        assert demoted.status_code == 200
+        assert demoted.json()["extraction_status"] == "needs_review"
+        refreshed = client.get(
+            f"/api/v1/admin/exams/{exam_id}",
+            headers=headers,
+        )
+        assert refreshed.json()["processing_status"] == "needs_review"
+
+    if exam_id:
+        with SessionLocal() as session:
+            exam = session.get(Exam, exam_id)
+            if exam:
+                session.delete(exam)
+                session.commit()

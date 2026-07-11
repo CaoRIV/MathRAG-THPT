@@ -193,3 +193,17 @@ class ExamParseReport(BaseModel):
     removed_stale_questions: int
     questions_needing_review: int
     warnings: list[str] = Field(default_factory=list)
+
+
+class QuestionReviewIssue(BaseModel):
+    question_id: str
+    question_number: int
+    issues: list[str]
+
+
+class BulkVerificationResult(BaseModel):
+    exam_id: str
+    verified_count: int
+    skipped_count: int
+    issues: list[QuestionReviewIssue]
+    exam: ExamDetail

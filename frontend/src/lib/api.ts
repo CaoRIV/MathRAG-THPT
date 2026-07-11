@@ -5,7 +5,11 @@ import type {
   ChatRequest,
   ChatResponse,
   DocumentDetail,
+  BulkVerificationResult,
+  ExamDetail,
   ExamParseReport,
+  ExamQuestion,
+  ExamQuestionUpdate,
   QuizResponse,
   ReadinessResponse,
   SearchFilters,
@@ -57,6 +61,23 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   } catch (error) {
     if (error instanceof ApiError) throw error;
     throw new ApiError("Không thể kết nối tới máy chủ MathRAG.");
+  }
+}
+
+async function requestBlob(path: string): Promise<Blob> {
+  try {
+    const token = getAccessToken();
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      throw new ApiError(payload?.detail ?? "Không thể tải file nguồn.", response.status);
+    }
+    return response.blob();
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    throw new ApiError("Không thể kết nối tới file nguồn đề thi.");
   }
 }
 
@@ -115,4 +136,21 @@ export const api = {
     request<ExamParseReport>(`/admin/documents/${documentId}/parse-exam`, {
       method: "POST",
     }),
+  adminExam: (examId: string) => request<ExamDetail>(`/admin/exams/${examId}`),
+  updateAdminExamQuestion: (
+    examId: string,
+    questionId: string,
+    payload: ExamQuestionUpdate,
+  ) =>
+    request<ExamQuestion>(`/admin/exams/${examId}/questions/${questionId}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    }),
+  verifyReadyExamQuestions: (examId: string) =>
+    request<BulkVerificationResult>(`/admin/exams/${examId}/verify-ready`, {
+      method: "POST",
+    }),
+  approveAdminExam: (examId: string) =>
+    request<ExamDetail>(`/admin/exams/${examId}/approve`, { method: "POST" }),
+  adminExamSource: (examId: string) => requestBlob(`/admin/exams/${examId}/source`),
 };

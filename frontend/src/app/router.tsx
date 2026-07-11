@@ -36,6 +36,11 @@ const AdminDocumentsPage = lazy(() =>
     default: module.AdminDocumentsPage,
   })),
 );
+const AdminExamReviewPage = lazy(() =>
+  import("../pages/AdminExamReviewPage").then((module) => ({
+    default: module.AdminExamReviewPage,
+  })),
+);
 
 function load(element: ReactNode) {
   return (
@@ -83,6 +88,10 @@ export const router = createBrowserRouter([
               {
                 path: "admin/documents",
                 element: load(<AdminDocumentsPage />),
+              },
+              {
+                path: "admin/exams/:id/review",
+                element: load(<AdminExamReviewPage />),
               },
             ],
           },

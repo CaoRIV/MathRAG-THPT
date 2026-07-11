@@ -46,10 +46,20 @@ boundary used by the review UI and the automatic parser planned for the next pha
 - `POST /admin/exams/{exam_id}/questions`: adds one normalized question.
 - `PATCH /admin/exams/{exam_id}/questions/{question_id}`: corrects extracted data
   or marks a question as verified.
+- `POST /admin/exams/{exam_id}/verify-ready`: verifies every complete question and
+  returns per-question issues for records that still need review.
+- `POST /admin/exams/{exam_id}/approve`: approves an exam only after every question
+  is verified.
+- `GET /admin/exams/{exam_id}/source`: streams the protected PDF/DOCX source to the
+  Admin review workspace.
 
 An exam follows `uploaded -> parsing -> needs_review -> approved -> indexed`.
 Approval is rejected until the exam contains at least one question and every
 question has `extraction_status: "verified"`.
+
+Verification additionally requires a valid answer for the question type and a
+detailed solution. Editing normalized question content after verification demotes
+the question, and any previously approved exam, back to `needs_review`.
 
 Each question stores its number, type, Markdown/LaTeX prompt, structured options,
 answer, solution, difficulty, topics, formulas, source page, extraction confidence,
