@@ -117,6 +117,11 @@ questions, options, answer keys, solutions, formulas, and page references. Exist
 exam files can be processed from the Admin table with **Phân tích đề** or
 **Phân tích lại**. Questions already verified by an Admin are preserved on reparse.
 
+After parsing, choose **Kiểm duyệt** in the Admin document table. The review
+workspace shows the original source beside each normalized question, renders math
+with KaTeX, supports corrections and per-question verification, and only enables
+exam approval when all questions satisfy the review rules.
+
 ## Verify
 
 ```powershell

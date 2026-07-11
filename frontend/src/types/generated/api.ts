@@ -177,3 +177,90 @@ export interface ExamParseReport {
   questions_needing_review: number;
   warnings: string[];
 }
+
+export type ExamType = "mock" | "official" | "practice";
+export type ExamQuestionType = "multiple_choice" | "true_false" | "short_answer";
+export type ExamQuestionDifficulty = "easy" | "medium" | "hard";
+export type ExtractionStatus = "detected" | "needs_review" | "verified" | "rejected";
+
+export interface ExamQuestionOption {
+  key: string;
+  content_markdown: string;
+}
+
+export interface ExamFormula {
+  raw_text: string;
+  latex?: string | null;
+  normalized?: string | null;
+}
+
+export interface ExamQuestion {
+  id: string;
+  exam_id: string;
+  source_chunk_id?: string | null;
+  question_number: number;
+  question_type: ExamQuestionType;
+  prompt_markdown: string;
+  options: ExamQuestionOption[];
+  correct_answer?: string | null;
+  solution_markdown?: string | null;
+  difficulty?: ExamQuestionDifficulty | null;
+  topics: string[];
+  formulas: ExamFormula[];
+  page_number?: number | null;
+  extraction_status: ExtractionStatus;
+  extraction_confidence?: number | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ExamDetail {
+  id: string;
+  document_id?: string | null;
+  title: string;
+  year?: number | null;
+  school?: string | null;
+  province?: string | null;
+  exam_type: ExamType;
+  duration_minutes?: number | null;
+  expected_question_count?: number | null;
+  question_count: number;
+  grade: number;
+  processing_status: ExamProcessingStatus;
+  description?: string | null;
+  created_by?: string | null;
+  created_at: string;
+  updated_at: string;
+  metadata: Record<string, unknown>;
+  questions: ExamQuestion[];
+}
+
+export interface ExamQuestionUpdate {
+  question_number?: number;
+  question_type?: ExamQuestionType;
+  prompt_markdown?: string;
+  options?: ExamQuestionOption[];
+  correct_answer?: string | null;
+  solution_markdown?: string | null;
+  difficulty?: ExamQuestionDifficulty | null;
+  topics?: string[];
+  formulas?: ExamFormula[];
+  page_number?: number | null;
+  extraction_status?: ExtractionStatus;
+  metadata?: Record<string, unknown>;
+}
+
+export interface QuestionReviewIssue {
+  question_id: string;
+  question_number: number;
+  issues: string[];
+}
+
+export interface BulkVerificationResult {
+  exam_id: string;
+  verified_count: number;
+  skipped_count: number;
+  issues: QuestionReviewIssue[];
+  exam: ExamDetail;
+}

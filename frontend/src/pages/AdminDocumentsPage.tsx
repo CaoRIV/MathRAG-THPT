@@ -1,5 +1,6 @@
 import {
   CheckCircle2,
+  ClipboardCheck,
   FileSearch,
   FileText,
   FileUp,
@@ -11,6 +12,7 @@ import {
 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState, type DragEvent, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { api } from "../lib/api";
 import { Badge } from "../components/ui/Badge";
 import { LoadingDots } from "../components/ui/LoadingDots";
@@ -61,6 +63,9 @@ export function AdminDocumentsPage() {
   const [contentType, setContentType] = useState("theory");
   const [description, setDescription] = useState("");
   const [parseReport, setParseReport] = useState<ExamParseReport | null>(null);
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | "needs_review" | "approved" | "failed"
+  >("all");
   const documents = useQuery({
     queryKey: ["admin-documents"],
     queryFn: api.adminDocuments,
@@ -82,6 +87,11 @@ export function AdminDocumentsPage() {
       queryClient.invalidateQueries({ queryKey: ["admin-documents"] });
     },
   });
+  const visibleDocuments =
+    documents.data?.items.filter(
+      (document) =>
+        statusFilter === "all" || document.exam_processing_status === statusFilter,
+    ) ?? [];
 
   function selectFile(selected?: File) {
     if (!selected) return;
@@ -241,7 +251,31 @@ export function AdminDocumentsPage() {
             <h2 className="font-heading text-xl font-semibold text-ink">Tài liệu đã upload</h2>
             <p className="mt-1 text-sm text-muted">{documents.data?.total ?? 0} tài liệu trong kho quản trị</p>
           </div>
-          {documents.isLoading && <LoadingDots />}
+          <div className="flex items-center gap-3">
+            <label className="sr-only" htmlFor="exam-status-filter">
+              Lọc theo trạng thái đề thi
+            </label>
+            <select
+              id="exam-status-filter"
+              value={statusFilter}
+              onChange={(event) =>
+                setStatusFilter(
+                  event.target.value as
+                    | "all"
+                    | "needs_review"
+                    | "approved"
+                    | "failed",
+                )
+              }
+              className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-ink focus:border-primary-400 focus:outline-none focus:ring-4 focus:ring-primary-100"
+            >
+              <option value="all">Tất cả tài liệu</option>
+              <option value="needs_review">Cần kiểm duyệt</option>
+              <option value="approved">Đã duyệt</option>
+              <option value="failed">Phân tích lỗi</option>
+            </select>
+            {documents.isLoading && <LoadingDots />}
+          </div>
         </div>
         {parseReport && (
           <div
@@ -287,7 +321,7 @@ export function AdminDocumentsPage() {
               </tr>
             </thead>
             <tbody>
-              {documents.data?.items.map((document) => (
+              {visibleDocuments.map((document) => (
                 <tr key={document.id}>
                   <td className="border-b border-slate-100 px-3 py-4">
                     <p className="font-semibold text-ink">{document.title}</p>
@@ -322,6 +356,15 @@ export function AdminDocumentsPage() {
                               ? "Phân tích lại"
                               : "Phân tích đề"}
                         </button>
+                        {document.exam_id && (
+                          <Link
+                            to={`/admin/exams/${document.exam_id}/review`}
+                            className="inline-flex cursor-pointer items-center gap-2 rounded-lg bg-primary-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-primary-700 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary-100"
+                          >
+                            <ClipboardCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                            Kiểm duyệt
+                          </Link>
+                        )}
                       </div>
                     ) : (
                       <span className="text-xs text-muted">Không áp dụng</span>
@@ -332,7 +375,11 @@ export function AdminDocumentsPage() {
               ))}
             </tbody>
           </table>
-          {documents.data?.items.length === 0 && <div className="py-10 text-center text-sm text-muted">Chưa có tài liệu quản trị nào được tải lên.</div>}
+          {visibleDocuments.length === 0 && !documents.isLoading && (
+            <div className="py-10 text-center text-sm text-muted">
+              Không có tài liệu phù hợp với bộ lọc hiện tại.
+            </div>
+          )}
         </div>
       </section>
     </div>

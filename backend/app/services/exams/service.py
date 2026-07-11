@@ -1,3 +1,4 @@
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -5,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.db.models import Chunk, Document, Exam, ExamQuestion, User
 from app.db.repositories import SqlAlchemyExamRepository
 from app.schemas.exams import (
+    BulkVerificationResult,
     ExamCreate,
     ExamDetail,
     ExamList,
@@ -15,7 +17,9 @@ from app.schemas.exams import (
     ExamSummary,
     ExamUpdate,
     ExtractionStatus,
+    QuestionReviewIssue,
 )
+from app.services.retrieval.formula import extract_formulas, normalize_formula
 
 
 class ExamService:
@@ -165,7 +169,11 @@ class ExamService:
             "metadata": question.metadata_json,
         }
         validation_payload.update(values)
-        ExamQuestionCreate.model_validate(validation_payload)
+        validated = ExamQuestionCreate.model_validate(validation_payload)
+        if values.get("extraction_status") == ExtractionStatus.VERIFIED:
+            issues = self._review_issues(validated)
+            if issues:
+                raise ValueError("Question cannot be verified: " + "; ".join(issues))
         if "source_chunk_id" in values:
             self._validate_source_chunk(exam, values["source_chunk_id"])
         field_map = {
@@ -196,6 +204,50 @@ class ExamService:
             elif hasattr(value, "value"):
                 value = value.value
             setattr(question, target, value)
+        content_fields = {
+            "question_number",
+            "question_type",
+            "prompt_markdown",
+            "options",
+            "correct_answer",
+            "solution_markdown",
+            "topics",
+            "formulas",
+        }
+        if (
+            question.extraction_status == ExtractionStatus.VERIFIED
+            and content_fields.intersection(values)
+            and "extraction_status" not in values
+        ):
+            question.extraction_status = ExtractionStatus.NEEDS_REVIEW
+        if content_fields.intersection(values) and exam.processing_status in {
+            ExamProcessingStatus.APPROVED,
+            ExamProcessingStatus.INDEXED,
+        }:
+            exam.processing_status = ExamProcessingStatus.NEEDS_REVIEW
+        if (
+            "extraction_status" in values
+            and question.extraction_status != ExtractionStatus.VERIFIED
+            and exam.processing_status
+            in {ExamProcessingStatus.APPROVED, ExamProcessingStatus.INDEXED}
+        ):
+            exam.processing_status = ExamProcessingStatus.NEEDS_REVIEW
+        if content_fields.intersection(values) and "formulas" not in values:
+            formula_source = "\n".join(
+                [
+                    question.prompt_markdown,
+                    *(item.get("content_markdown", "") for item in question.options_json),
+                    question.solution_markdown or "",
+                ]
+            )
+            question.formulas = [
+                {
+                    "raw_text": formula,
+                    "latex": formula,
+                    "normalized": normalize_formula(formula),
+                }
+                for formula in extract_formulas(formula_source)
+            ]
         try:
             self.session.commit()
         except IntegrityError as error:
@@ -205,6 +257,110 @@ class ExamService:
             ) from error
         self.session.refresh(question)
         return self._to_question(question)
+
+    def verify_all_ready(self, exam_id: str) -> BulkVerificationResult | None:
+        exam = self.repository.get(exam_id)
+        if not exam:
+            return None
+        verified_count = 0
+        issues: list[QuestionReviewIssue] = []
+        for question in exam.questions:
+            if question.extraction_status == ExtractionStatus.REJECTED:
+                issues.append(
+                    QuestionReviewIssue(
+                        question_id=question.id,
+                        question_number=question.question_number,
+                        issues=["Câu hỏi đang bị từ chối."],
+                    )
+                )
+                continue
+            try:
+                payload = ExamQuestionCreate.model_validate(
+                    self._question_validation_payload(question)
+                )
+            except ValidationError:
+                issues.append(
+                    QuestionReviewIssue(
+                        question_id=question.id,
+                        question_number=question.question_number,
+                        issues=["Dữ liệu cấu trúc của câu hỏi chưa hợp lệ."],
+                    )
+                )
+                continue
+            question_issues = self._review_issues(payload)
+            if question_issues:
+                issues.append(
+                    QuestionReviewIssue(
+                        question_id=question.id,
+                        question_number=question.question_number,
+                        issues=question_issues,
+                    )
+                )
+                continue
+            if question.extraction_status != ExtractionStatus.VERIFIED:
+                question.extraction_status = ExtractionStatus.VERIFIED
+                verified_count += 1
+        exam.processing_status = ExamProcessingStatus.NEEDS_REVIEW
+        self.session.commit()
+        refreshed = self.repository.get(exam.id) or exam
+        return BulkVerificationResult(
+            exam_id=exam.id,
+            verified_count=verified_count,
+            skipped_count=len(issues),
+            issues=issues,
+            exam=self._to_detail(refreshed),
+        )
+
+    def approve_exam(self, exam_id: str) -> ExamDetail | None:
+        return self.update_exam(
+            exam_id,
+            ExamUpdate(processing_status=ExamProcessingStatus.APPROVED),
+        )
+
+    @staticmethod
+    def _question_validation_payload(question: ExamQuestion) -> dict:
+        return {
+            "source_chunk_id": question.source_chunk_id,
+            "question_number": question.question_number,
+            "question_type": question.question_type,
+            "prompt_markdown": question.prompt_markdown,
+            "options": question.options_json,
+            "correct_answer": question.correct_answer,
+            "solution_markdown": question.solution_markdown,
+            "difficulty": question.difficulty,
+            "topics": question.topics,
+            "formulas": question.formulas,
+            "page_number": question.page_number,
+            "extraction_status": question.extraction_status,
+            "extraction_confidence": question.extraction_confidence,
+            "metadata": question.metadata_json,
+        }
+
+    @staticmethod
+    def _review_issues(question: ExamQuestionCreate) -> list[str]:
+        issues: list[str] = []
+        if not question.prompt_markdown.strip():
+            issues.append("Thiếu nội dung câu hỏi.")
+        option_keys = {option.key.strip().upper() for option in question.options}
+        answer = (question.correct_answer or "").strip().upper()
+        if question.question_type == "multiple_choice":
+            if len(question.options) < 2:
+                issues.append("Câu trắc nghiệm cần ít nhất 2 phương án.")
+            if not answer or answer not in option_keys:
+                issues.append("Đáp án đúng phải trùng với một phương án.")
+        elif question.question_type == "true_false":
+            if len(question.options) != 4:
+                issues.append("Câu đúng/sai cần đủ 4 mệnh đề.")
+            normalized_answer = answer.replace("D", "Đ")
+            if len(normalized_answer) != 4 or any(
+                value not in {"Đ", "S"} for value in normalized_answer
+            ):
+                issues.append("Đáp án đúng/sai phải gồm 4 ký tự Đ hoặc S.")
+        elif not answer:
+            issues.append("Câu trả lời ngắn chưa có đáp án.")
+        if not (question.solution_markdown or "").strip():
+            issues.append("Thiếu lời giải chi tiết.")
+        return issues
 
     def _validate_source_chunk(self, exam: Exam, chunk_id: str | None) -> None:
         if not chunk_id:

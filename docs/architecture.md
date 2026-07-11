@@ -53,6 +53,19 @@ Parsing transitions an exam through `parsing` to `needs_review`, or to `failed` 
 no reliable question structure is detected. Reparse preserves every `verified`
 question so automatic extraction cannot overwrite reviewed educational content.
 
+## Admin review workflow
+
+The Admin review page loads the protected source as an authenticated blob and keeps
+the current PDF page aligned with the normalized question. Admins can edit Markdown
+and LaTeX, options, answer, solution, topic, and difficulty; preview KaTeX output;
+verify individual or all ready questions; reject unsuitable questions; and approve
+the complete exam.
+
+Review invariants are enforced by the backend, not only by UI state. A verified
+question must have a structurally valid answer and detailed solution. Editing or
+rejecting a question demotes an approved exam to `needs_review`. Formula records are
+rebuilt when question or solution content changes.
+
 ## Replaceable boundaries
 
 - `EmbeddingProvider` separates local deterministic embeddings from Sentence Transformers or Ollama embeddings.
